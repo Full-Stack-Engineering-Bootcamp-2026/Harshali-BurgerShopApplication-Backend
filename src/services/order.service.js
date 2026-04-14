@@ -3,7 +3,6 @@ const Combo = require("../models/combo");
 const Order = require("../models/order");
 
 function mergeCartItems(items) {           //merge items in cart
-
   const result = {};
 
   items.forEach((item) => {
@@ -18,16 +17,14 @@ function mergeCartItems(items) {           //merge items in cart
 }
 
 function validateItems(cartItems) {             //cart validation
-  if (cartItems.length === 0) 
-    {throw new Error("Cart empty");}
+  if (cartItems.length === 0) {
+    throw new Error("Cart empty");
+  }
 
   cartItems.forEach((item) => {
-
     if (item.quantity <= 0 || item.quantity > 9) {
       throw new Error("Invalid quantity");
     }
-
-    
   });
 }
 
@@ -42,7 +39,6 @@ function getComboDiscount(combo) {
 }
 
 function getMinCost(cartMap, productList, combos) {
-
   let cart = { ...cartMap };
   let total = 0;
   let appliedCombos = [];
@@ -76,16 +72,25 @@ function getMinCost(cartMap, productList, combos) {
     }
   }
 
+  let remainingItems = [];
+
   for (let id in cart) {
     const product = productList.find((p) => p.id == id);
+
     total += product.price * cart[id];
+
+    remainingItems.push({
+      productId: product.id,
+      name: product.name,
+      quantity: cart[id],
+      price: product.price,
+    });
   }
 
-  return { total, appliedCombos };
+  return { total, appliedCombos, remainingItems };
 }
 
 exports.checkout = (name, email, items) => {
-    
   let productList;
   let cartItems;
   let totalActual;
@@ -96,9 +101,10 @@ exports.checkout = (name, email, items) => {
 
       cartItems = mergeCartItems(items);
 
-      validateItems(cartItems, productList);
+      validateItems(cartItems);
 
       totalActual = 0;
+
       cartItems.forEach((item) => {
         const prod = productList.find((p) => p.id === item.productId);
         totalActual += prod.price * item.quantity;
@@ -118,13 +124,13 @@ exports.checkout = (name, email, items) => {
     })
     .then((fullCombos) => {
       fullCombos.sort((a, b) => {
-
         const discountA = getComboDiscount(a);
         const discountB = getComboDiscount(b);
         return discountB - discountA;
       });
 
       const cartMap = {};
+
       cartItems.forEach((item) => {
         cartMap[item.productId] = item.quantity;
       });
@@ -133,6 +139,7 @@ exports.checkout = (name, email, items) => {
 
       const optimizedTotal = result.total;
       const appliedCombos = result.appliedCombos;
+      const remainingItems = result.remainingItems;
 
       return Order.create({
         name,
@@ -140,8 +147,7 @@ exports.checkout = (name, email, items) => {
         actualAmount: totalActual,
         optimizedAmount: optimizedTotal,
         appliedCombos: appliedCombos,
-      })
-      .then((order) => {
+      }).then((order) => {
         return Promise.all(
           cartItems.map((item) =>
             order.addProduct(item.productId, {
@@ -152,6 +158,7 @@ exports.checkout = (name, email, items) => {
           actual: totalActual,
           optimized: optimizedTotal,
           appliedCombos: appliedCombos,
+          remainingItems: remainingItems,
         }));
       });
     });
@@ -160,3 +167,4 @@ exports.checkout = (name, email, items) => {
 exports.getOrders = () => {
   return Order.findAll();
 };
+
