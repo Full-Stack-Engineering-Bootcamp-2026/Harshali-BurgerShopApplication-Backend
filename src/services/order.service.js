@@ -28,17 +28,18 @@ function validateItems(cartItems) {             //cart validation
   });
 }
 
-function getComboDiscount(combo) {
+function getComboDiscount(combo) {               //cal discnt 
   let actual = 0;
 
   combo.products.forEach((p) => {
     actual += p.price * p.comboItem.quantity;
   });
 
-  return actual - combo.price;
+  return actual - combo.price;                    //actual price -combo price
 }
 
-function getMinCost(cartMap, productList, combos) {
+function getMinCost(cartMap, productList, combos) {          //optimisation
+
   let cart = { ...cartMap };
   let total = 0;
   let appliedCombos = [];
@@ -107,7 +108,7 @@ exports.checkout = (name, email, items) => {
 
       cartItems.forEach((item) => {
         const prod = productList.find((p) => p.id === item.productId);
-        totalActual += prod.price * item.quantity;
+        totalActual += prod.price * item.quantity;        //cal actual price
       });
 
       return Combo.findAll();
@@ -115,7 +116,7 @@ exports.checkout = (name, email, items) => {
     .then((combos) => {
       return Promise.all(
         combos.map((combo) =>
-          combo.getProducts().then((products) => {
+          combo.getProducts().then((products) => {          //combo.getProducts --id,price qty
             combo.products = products;
             return combo;
           })
@@ -124,15 +125,17 @@ exports.checkout = (name, email, items) => {
     })
     .then((fullCombos) => {
       fullCombos.sort((a, b) => {
+
         const discountA = getComboDiscount(a);
         const discountB = getComboDiscount(b);
-        return discountB - discountA;
+
+        return discountB - discountA;           //sort in desc order of discount price
       });
 
       const cartMap = {};
 
       cartItems.forEach((item) => {
-        cartMap[item.productId] = item.quantity;
+        cartMap[item.productId] = item.quantity;           //convert cart to map
       });
 
       const result = getMinCost(cartMap, productList, fullCombos);
@@ -147,7 +150,8 @@ exports.checkout = (name, email, items) => {
         actualAmount: totalActual,
         optimizedAmount: optimizedTotal,
         appliedCombos: appliedCombos,
-      }).then((order) => {
+      })
+      .then((order) => {
         return Promise.all(
           cartItems.map((item) =>
             order.addProduct(item.productId, {

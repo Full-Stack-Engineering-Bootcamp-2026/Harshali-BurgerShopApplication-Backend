@@ -7,7 +7,7 @@ exports.getProducts = (search, category, type) => {
   let where = {}        //obj for search filter
 
   if (search) {
-    where.name = { [Op.like]: `%${search}%` }
+    where.name = { [Op.like]: `%${search}%` }          //Op.like ,Op.in ,Op.gte
   }
 
   if (category) {
